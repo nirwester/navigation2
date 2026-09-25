@@ -98,6 +98,58 @@ TEST(RobotUtils, lookupTransformWithStalenessCheck)
   EXPECT_EQ(result, previous_result);
 }
 
+TEST(RobotUtils, lookupTransformSelectsLookupPolicyFromTimestamp)
+{
+  auto clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+  nav2::TransformBuffer tf(clock);
+  geometry_msgs::msg::TransformStamped transform;
+  transform.header.frame_id = "map";
+  transform.header.stamp = rclcpp::Time(8, 0, RCL_ROS_TIME);
+  transform.child_frame_id = "base_link";
+  transform.transform.rotation.w = 1.0;
+  tf.setTransform(transform, "test", false);
+
+  geometry_msgs::msg::TransformStamped result;
+  const rclcpp::Time current_time(10, 0, RCL_ROS_TIME);
+
+  // A zero stamp uses the latest transform and applies the optional staleness check.
+  EXPECT_FALSE(nav2_util::lookupTransform(
+      tf, "map", "base_link", rclcpp::Time(0, 0, RCL_ROS_TIME), result,
+      current_time, 1.0));
+  EXPECT_TRUE(nav2_util::lookupTransform(
+      tf, "map", "base_link", rclcpp::Time(0, 0, RCL_ROS_TIME), result,
+      current_time, 2.0));
+  EXPECT_EQ(result, transform);
+
+  // A nonzero stamp performs an exact lookup, independent of the staleness threshold.
+  EXPECT_TRUE(nav2_util::lookupTransform(
+      tf, "map", "base_link", rclcpp::Time(8, 0, RCL_ROS_TIME), result,
+      current_time, 1.0));
+  EXPECT_EQ(result, transform);
+}
+
+TEST(RobotUtils, lookupTransformOptionalParametersAndFailure)
+{
+  auto clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+  nav2::TransformBuffer tf(clock);
+  geometry_msgs::msg::TransformStamped transform;
+  transform.header.frame_id = "map";
+  transform.header.stamp = rclcpp::Time(8, 0, RCL_ROS_TIME);
+  transform.child_frame_id = "base_link";
+  transform.transform.rotation.w = 1.0;
+  tf.setTransform(transform, "test", false);
+
+  geometry_msgs::msg::TransformStamped result;
+  EXPECT_TRUE(nav2_util::lookupTransform(
+      tf, "map", "base_link", rclcpp::Time(8, 0, RCL_ROS_TIME), result));
+  EXPECT_EQ(result, transform);
+
+  result.header.frame_id = "unchanged";
+  EXPECT_FALSE(nav2_util::lookupTransform(
+      tf, "map", "missing_frame", rclcpp::Time(8, 0, RCL_ROS_TIME), result));
+  EXPECT_EQ(result.header.frame_id, "unchanged");
+}
+
 TEST(RobotUtils, lookupTransformWithStalenessCheckSameFrameReturnsIdentity)
 {
   auto clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);

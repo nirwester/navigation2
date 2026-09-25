@@ -227,18 +227,12 @@ bool SimpleChargingDock::getRefinedPose(geometry_msgs::msg::PoseStamped & pose, 
   if (detected.header.frame_id != pose.header.frame_id) {
     try {
       geometry_msgs::msg::TransformStamped frame_transform;
-      if (rclcpp::Time(detected.header.stamp).nanoseconds() == 0) {
-        if (!nav2_util::lookupTransformWithStalenessCheck(
-            *tf2_buffer_, pose.header.frame_id, detected.header.frame_id,
-            node_->now(), transform_staleness_threshold_, frame_transform))
-        {
-          return false;
-        }
-      } else {
-        // Keep the measurement time and use the lookup result directly.
-        frame_transform = tf2_buffer_->lookupTransform(
-          pose.header.frame_id, detected.header.frame_id,
-          detected.header.stamp, rclcpp::Duration::from_seconds(0.2));
+      if (!nav2_util::lookupTransform(
+          *tf2_buffer_, pose.header.frame_id, detected.header.frame_id,
+          rclcpp::Time(detected.header.stamp), frame_transform, node_->now(),
+          transform_staleness_threshold_, tf2::durationFromSec(0.2)))
+      {
+        return false;
       }
       tf2::doTransform(detected, detected, frame_transform);
     } catch (const tf2::TransformException & ex) {

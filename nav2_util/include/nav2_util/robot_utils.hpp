@@ -34,6 +34,32 @@ namespace nav2_util
 {
 
 /**
+ * @brief Retrieves a transform at the requested time
+ *
+ * A zero lookup time requests the latest transform and optionally verifies its freshness. A
+ * nonzero lookup time requests the transform at that exact time and does not perform a staleness
+ * check.
+ * @param tf_buffer TF buffer to use for the lookup
+ * @param target_frame Frame to transform into
+ * @param source_frame Frame to transform from
+ * @param lookup_time Time at which to retrieve the transform; zero requests the latest transform
+ * @param transform Output transform; unchanged on failure
+ * @param current_time Time against which latest-transform age is measured
+ * @param staleness_threshold Maximum latest-transform age; non-positive disables the check
+ * @param lookup_tolerance How long to wait for the transform
+ * @return True if the lookup succeeds and a latest transform is not stale, false otherwise
+ */
+bool lookupTransform(
+  nav2::TransformBuffer & tf_buffer,
+  const std::string & target_frame,
+  const std::string & source_frame,
+  const rclcpp::Time & lookup_time,
+  geometry_msgs::msg::TransformStamped & transform,
+  const rclcpp::Time & current_time = rclcpp::Time(),
+  double staleness_threshold = 0.0,
+  const tf2::Duration & lookup_tolerance = tf2::durationFromSec(0.0));
+
+/**
  * @brief Retrieves the most recent transform between the specified frames, without synchronizing
  *        it with any specific time stamp. Verifies that the transform is not older than specified
  *        unless it's static.

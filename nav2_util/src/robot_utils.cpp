@@ -29,6 +29,35 @@
 namespace nav2_util
 {
 
+bool lookupTransform(
+  nav2::TransformBuffer & tf_buffer,
+  const std::string & target_frame,
+  const std::string & source_frame,
+  const rclcpp::Time & lookup_time,
+  geometry_msgs::msg::TransformStamped & transform,
+  const rclcpp::Time & current_time,
+  double staleness_threshold,
+  const tf2::Duration & lookup_tolerance)
+{
+  if (lookup_time.nanoseconds() == 0) {
+    return lookupTransformWithStalenessCheck(
+      tf_buffer, target_frame, source_frame, current_time, staleness_threshold, transform);
+  }
+
+  try {
+    auto exact_transform = tf_buffer.lookupTransform(
+      target_frame, source_frame, lookup_time, lookup_tolerance);
+    transform = exact_transform;
+    return true;
+  } catch (const tf2::TransformException & ex) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("lookupTransform"),
+      "Failed to get transform from frame '%s' to frame '%s': %s",
+      source_frame.c_str(), target_frame.c_str(), ex.what());
+    return false;
+  }
+}
+
 bool lookupTransformWithStalenessCheck(
   nav2::TransformBuffer & tf_buffer,
   const std::string & target_frame,
